@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GRAND MARKET — Доставка</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f5f5;font-family:Arial,sans-serif;color:#222}
+header{background:#d71920;color:white;padding:25px 18px}
+header h1{margin:0;font-size:30px}
+header p{margin:10px 0 0}
+main{max-width:700px;margin:auto;padding:15px}
+.notice{background:#ffe8e8;color:#a00000;padding:15px;border-radius:12px}
+section{background:white;padding:20px;margin-top:15px;border-radius:15px}
+h2{font-size:23px}
+input,textarea,button{font:inherit}
+input,textarea{width:100%;padding:14px;margin:8px 0;border:1px solid #ddd;border-radius:10px}
+button{background:#d71920;color:white;border:0;border-radius:10px;padding:12px;cursor:pointer}
+.product{padding:15px 0;border-bottom:1px solid #eee}
+.product button{float:right}
+.price{color:#d71920;font-weight:bold}
+.cart-item{padding:10px 0;border-bottom:1px solid #eee}
+.submit{width:100%;padding:16px;font-weight:bold}
+small{color:#777}
+</style>
+</head>
+<body>
+
+<header>
+<h1>GRAND MARKET</h1>
+<p>Ангрен • 09:00–23:00 • Доставка</p>
+</header>
+
+<main>
+
+<div class="notice">
+300 000 сўмдан бошлаб бепул доставка!
+</div>
+
+<section>
+<h2>🛒 Маҳсулотлар</h2>
+<input id="search" placeholder="Маҳсулот қидириш" oninput="renderProducts()">
+<div id="products">Юкланмоқда...</div>
+</section>
+
+<section>
+<h2>🧺 Саватча</h2>
+<div id="cart"></div>
+<h3 id="total">Жами: 0 сўм</h3>
+</section>
+
+<section>
+<h2>🚗 Буюртма бериш</h2>
+<p><small>Нарх ва қолдиқлар ҳозирча 1C билан синхрон эмас.</small></p>
+
+<form id="orderForm">
+<input id="name" placeholder="Исмингиз" required>
+<input id="phone" type="tel" placeholder="Телефон рақамингиз" required>
+<textarea id="address" placeholder="Ангрен шаҳридаги манзилингиз" required></textarea>
+<textarea id="comment" placeholder="Қўшимча изоҳ"></textarea>
+<button class="submit" type="submit">Буюртма бериш</button>
+</form>
+<p id="message"></p>
+</section>
+
+</main>
+
+<script>
+let products=[];
+let cart={};
+
+function money(n){
+ return Number(n).toLocaleString("ru-RU")+" сўм";
+}
+
+async function loadProducts(){
+ try{
+  const response=await fetch("/api/products");
+  if(!response.ok)throw Error("API error");
+  products=await response.json();
+  renderProducts();
+ }catch(e){
+  document.getElementById("products").textContent=
+  "Маҳсулотларни юклаб бўлмади.";
+ }
+}
+
+function renderProducts(){
+ const q=document.getElementById("search").value.toLowerCase();
+ const box=document.getElementById("products");
+ box.innerHTML="";
+ products.filter(p=>
+  String(p.uz||p.name||"").toLowerCase().includes(q)
+ ).forEach(p=>{
+  const row=document.createElement("div");
+  row.className="product";
+  const title=document.createElement("div");
+  title.textContent=p.uz||p.name||"Маҳсулот";
+  const price=document.createElement("span");
+  price.className="price";
+  price.textContent=money(p.price||0);
+  const btn=document.createElement("button");
+  btn.textContent="+ Қўшиш";
+  btn.onclick=()=>add(p.id);
+  row.append(title,price,document.createElement("br"),btn);
+  box.append(row);
+ });
+}
+
+function add(id){
+ cart[id]=(cart[id]||0)+1;
+ renderCart();
+}
+
+function change(id,n){
+ cart[id]=(cart[id]||0)+n;
+ if(cart[id]<=0)delete cart[id];
+ renderCart();
+}
+
+function renderCart(){
+ const box=document.getElementById("cart");
+ box.innerHTML="";
+ let total=0;
+ Object.entries(cart).forEach(([id,qty])=>{
+  const p=products.find(x=>String(x.id)===String(id));
+  if(!p)return;
+  total+=Number(p.price||0)*qty;
+  const row=document.createElement("div");
+  row.className="cart-item";
+  row.textContent=(p.uz||p.name)+" × "+qty+" — "+money(p.price*qty)+" ";
+  const minus=document.createElement("button");
+  minus.textContent="−";
+  minus.onclick=()=>change(id,-1);
+  const plus=document.createElement("button");
+  plus.textContent="+";
+  plus.onclick=()=>change(id,1);
+  row.append(minus,plus);
+  box.append(row);
+ });
+ document.getElementById("total").textContent="Жами: "+money(total);
+}
+
+document.getElementById("orderForm").onsubmit=async e=>{
+ e.preventDefault();
+ const msg=document.getElementById("message");
+ const items=Object.entries(cart).map(([id,qty])=>({
+  id:Number(id),qty
+ }));
+ if(!items.length){
+  msg.textContent="Аввал маҳсулот танланг.";
+  return;
+ }
+ const payload={
+  name:document.getElementById("name").value,
+  phone:document.getElementById("phone").value,
+  address:document.getElementById("address").value,
+  comment:document.getElementById("comment").value,
+  items
+ };
+ try{
+  const response=await fetch("/api/orders",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify(payload)
+  });
+  if(!response.ok)throw Error("Order failed");
+  msg.textContent="✅ Буюртмангиз қабул қилинди!";
+  cart={};
+  renderCart();
+  e.target.reset();
+ }catch(err){
+  msg.textContent="❌ Буюртма юборилмади. Қайта уриниб кўринг.";
+ }
+};
+
+loadProducts();
+</script>
+
+</body>
+</html>
