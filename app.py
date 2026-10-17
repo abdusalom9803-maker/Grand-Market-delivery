@@ -17,7 +17,8 @@ def init():
 init()
 PRODUCTS=[{'id':1,'uz':'Банан 1 кг','ru':'Бананы 1 кг','price':19990,'icon':'🍌'},{'id':2,'uz':'Олма 1 кг','ru':'Яблоки 1 кг','price':13990,'icon':'🍎'},{'id':3,'uz':'Картошка 1 кг','ru':'Картофель 1 кг','price':6990,'icon':'🥔'},{'id':4,'uz':'Тухум 10 дона','ru':'Яйца 10 шт','price':13990,'icon':'🥚'},{'id':5,'uz':'Сув 1,5 л','ru':'Вода 1,5 л','price':4990,'icon':'💧'},{'id':6,'uz':'Товуқ филе 1 кг','ru':'Куриное филе 1 кг','price':42990,'icon':'🍗'}]
 @app.get('/')
-def home():return send_from_directory('static','index.html')
+def home():
+    return send_from_directory('.', 'index.html')
 @app.get('/api/products')
 def products():return jsonify(PRODUCTS)
 def notify(text):
