@@ -1,2 +1,4 @@
 Flask>=3.0,<4
-gunicorn
+SQLAlchemy>=2.0,<3
+psycopg[binary]>=3.2,<4
+gunicorn>=22,<24
